@@ -2,6 +2,7 @@
 
 import json
 import os
+import sys
 
 from PyQt6.QtWidgets import (
     QWidget, QFormLayout, QLineEdit, QComboBox, QPushButton,
@@ -217,14 +218,23 @@ class ConnectionPanel(QGroupBox):
 
     @staticmethod
     def _find_presets_file():
-        # Look next to this script, then in ~/.tibco-messenger/
-        candidates = [
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "presets.json"),
-            os.path.expanduser("~/.tibco-messenger/presets.json"),
-        ]
-        for p in candidates:
-            if os.path.isfile(p):
-                return os.path.normpath(p)
+        # User override first
+        user_path = os.path.expanduser("~/.tibco-messenger/presets.json")
+        if os.path.isfile(user_path):
+            return user_path
+
+        # Bundled or dev path
+        if getattr(sys, 'frozen', False):
+            # PyInstaller bundle — resources are in sys._MEIPASS
+            bundled = os.path.join(sys._MEIPASS, "presets.json")
+            if os.path.isfile(bundled):
+                return bundled
+        else:
+            # Dev mode — look next to widgets/ dir
+            dev_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "presets.json")
+            dev_path = os.path.normpath(dev_path)
+            if os.path.isfile(dev_path):
+                return dev_path
         return None
 
     def _on_env_changed(self, name: str):
