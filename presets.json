@@ -1,0 +1,55 @@
+[
+  {
+    "name": "DEV (MOD)",
+    "service": "7040",
+    "network": "192.168.0.162",
+    "daemon": "tcp:192.168.0.162:7500",
+    "target_subject": "MES.DEV.OPI.MOD.NM",
+    "own_subject": "MES.DEV.OPI.MOD.CM",
+    "timeout": "20",
+    "encoding_string": "UTF-8",
+    "mode": "DEV"
+  },
+  {
+    "name": "TEST (MOD)",
+    "service": "7030",
+    "network": "10.80.30.64",
+    "daemon": "tcp:10.80.30.64:7500",
+    "daemon_list": ["tcp:10.80.30.64:7500", "tcp:10.80.30.52:7500", "tcp:10.80.30.53:7500"],
+    "target_subject": "MES.TEST.OPI.MOD.NM",
+    "own_subject": "MES.TEST.OPI.MOD.CM",
+    "timeout": "20",
+    "encoding_string": "UTF-8",
+    "mode": "TEST",
+    "target_subject_list": {
+      "GTM": "MES.DEV.GTM.NM"
+    }
+  },
+  {
+    "name": "PRD (MOD)",
+    "service": "7030",
+    "network": "10.80.30.23",
+    "daemon": "tcp:10.80.30.51:7500",
+    "daemon_list": ["tcp:10.80.30.51:7500", "tcp:10.80.30.52:7500", "tcp:10.80.30.53:7500"],
+    "target_subject": "MES.PRD.OPI.MOD.NM",
+    "own_subject": "MES.PRD.OPI.MOD.CM",
+    "timeout": "20",
+    "encoding_string": "UTF-8",
+    "mode": "PRD",
+    "target_subject_list": {
+      "GTM": "MES.PRD.GTM.OPI.MOD.NM",
+      "EIS": "MES.PRD.EIS.MOD.NM"
+    }
+  },
+  {
+    "name": "TEST (ARRAY)",
+    "service": "7010",
+    "network": "10.211.55.2",
+    "daemon": "tcp:10.211.55.2:7500",
+    "target_subject": "MES.TEST.OPI.ARRAY.NM",
+    "own_subject": "MODMES.UT2.OIC.OWNER",
+    "timeout": "120",
+    "encoding_string": "UTF-8",
+    "mode": "TEST"
+  }
+]
