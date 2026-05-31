@@ -35,7 +35,7 @@
 
 ### 方式一：下载 DMG
 
-从 [Releases](https://github.com/your-org/tibco-messenger/releases) 下载 `TibcoMessenger-x.x.x.dmg`，双击挂载后拖入 Applications。
+从 [Releases](https://github.com/liutao-gif/tibco-messenger/releases/tag/V1.0.0) 下载 `TibcoMessenger-x.x.x.dmg`，双击挂载后拖入 Applications。
 
 首次打开：右键 → 打开（因未签名需手动确认一次）。
 
