@@ -119,10 +119,13 @@ class ResponseViewer(QGroupBox):
     def _pretty_xml(self, xml: str) -> str:
         try:
             from xml.dom import minidom
+            import re
             pretty = minidom.parseString(xml).toprettyxml(indent="  ")
             lines = pretty.split("\n")
             if lines and lines[0].startswith("<?xml"):
                 pretty = "\n".join(lines[1:])
+            # Remove blank lines produced by toprettyxml
+            pretty = re.sub(r'\n\s*\n', '\n', pretty)
             return pretty.strip()
         except Exception:
             return xml

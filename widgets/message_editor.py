@@ -71,7 +71,7 @@ class MessageEditor(QGroupBox):
         top_row.addWidget(QLabel("Mode:"))
 
         self.mode_combo = QComboBox()
-        self.mode_combo.addItems(["SendRequest", "Send"])
+        self.mode_combo.addItems(["Send", "SendRequest"])
         top_row.addWidget(self.mode_combo)
 
         top_row.addWidget(QLabel("Timeout (s):"))
