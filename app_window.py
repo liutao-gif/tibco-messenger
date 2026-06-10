@@ -1,10 +1,13 @@
 """Main application window."""
 
+import re
 import time
+import threading
 
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QSplitter,
     QStatusBar, QMessageBox, QLabel, QPushButton, QInputDialog,
+    QTabWidget, QApplication,
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
@@ -56,7 +59,12 @@ class MainWindow(QMainWindow):
         self.message_library.setMaximumWidth(280)
         main_splitter.addWidget(self.message_library)
 
-        # Right: editor + response
+        # Right: Single Send tab + Batch Send tab
+        from widgets.batch_panel import BatchPanel
+
+        self.tab_widget = QTabWidget()
+
+        # Tab 1: Single Send (editor + response)
         right_splitter = QSplitter(Qt.Orientation.Vertical)
         right_splitter.setHandleWidth(1)
 
@@ -69,7 +77,15 @@ class MainWindow(QMainWindow):
         right_splitter.addWidget(self.response_viewer)
 
         right_splitter.setSizes([480, 260])
-        main_splitter.addWidget(right_splitter)
+
+        self.tab_widget.addTab(right_splitter, "Single Send")
+
+        # Tab 2: Batch Send
+        self.batch_panel = BatchPanel()
+        self.batch_panel.send_all_requested.connect(self._on_batch_send)
+        self.tab_widget.addTab(self.batch_panel, "Batch Send")
+
+        main_splitter.addWidget(self.tab_widget)
         main_splitter.setSizes([240, 940])
 
         root_layout.addWidget(main_splitter, 1)
@@ -88,7 +104,12 @@ class MainWindow(QMainWindow):
             self.status_label.setText(f"Offline — {get_load_error()}")
 
     def _on_config_changed(self, config: ConnectionConfig):
-        self.message_editor.set_subject_keys(config.target_subject_list)
+        # Build subject keys — fallback to target_subject if list is empty
+        subject_keys = dict(config.target_subject_list) if config.target_subject_list else {}
+        if config.target_subject and not subject_keys:
+            subject_keys["default"] = config.target_subject
+        self.message_editor.set_subject_keys(subject_keys)
+        self.batch_panel.set_subject_keys(subject_keys)
         if config.target_subject:
             self.message_editor.set_subject(config.target_subject)
 
@@ -108,6 +129,69 @@ class MainWindow(QMainWindow):
             subject_key=self.message_editor.get_subject(),
         )
         self.status_label.setText(f"Template '{name}' saved.")
+
+    def _on_batch_send(self, messages: list, mode: str, timeout: float):
+        """Send all messages in a batch — group by thread_id, run groups in parallel."""
+        if not messages:
+            return
+
+        config = self.connection_panel.get_config()
+
+        # Group messages by thread_id
+        groups: dict[str, list] = {}
+        for i, msg in enumerate(messages):
+            tid = msg.thread_id or "1"
+            groups.setdefault(tid, []).append((i, msg))
+
+        def _send_group(thread_id: str, items: list):
+            """Send all messages in one thread group sequentially."""
+            client = None
+            try:
+                from tibco_rv import TibcoRV
+                client = TibcoRV()
+                client.open()
+                client.create_transport(config.service, config.network, config.daemon)
+
+                for idx, msg in items:
+                    try:
+                        xml_body = msg.xml_body.lstrip("﻿").strip()
+                        xml_body = re.sub(r'^<\?xml[^?]*\?>\s*', '', xml_body)
+
+                        t0 = time.perf_counter()
+                        if mode == "SendRequest":
+                            reply = client.send_request(
+                                msg.subject, config.own_subject, config.field_name, xml_body, timeout
+                            )
+                            elapsed = (time.perf_counter() - t0) * 1000
+                            if reply:
+                                self.batch_panel.emit_result(idx, True, response=reply)
+                            else:
+                                self.batch_panel.emit_result(idx, False, error=f"Timeout ({elapsed:.0f}ms)")
+                        else:
+                            client.send(msg.subject, config.field_name, xml_body)
+                            elapsed = (time.perf_counter() - t0) * 1000
+                            self.batch_panel.emit_result(idx, True, response=f"[T{thread_id}] Sent in {elapsed:.0f}ms")
+                    except Exception as e:
+                        self.batch_panel.emit_result(idx, False, error=str(e))
+            except Exception as e:
+                for idx, msg in items:
+                    self.batch_panel.emit_result(idx, False, error=f"Connect: {e}")
+            finally:
+                try:
+                    if client:
+                        client.close()
+                except Exception:
+                    pass
+
+        threads = []
+        for tid, items in groups.items():
+            t = threading.Thread(target=_send_group, args=(tid, items), daemon=True)
+            t.start()
+            threads.append(t)
+
+        # Wait for all threads to finish
+        for t in threads:
+            t.join()
 
     def _on_send(self, subject: str, xml_body: str, timeout: float):
         if not subject:

@@ -31,6 +31,14 @@ class MessageTemplate:
 
 
 @dataclass
+class BatchMessage:
+    """A single message in a batch send."""
+    subject: str = ""
+    xml_body: str = ""
+    response_text: str = ""
+    thread_id: str = "1"
+
+@dataclass
 class SendResult:
     success: bool
     response: Optional[str] = None
